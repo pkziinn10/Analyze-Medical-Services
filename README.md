@@ -1,123 +1,142 @@
-# 🏥 Analyze the Use of Medical Services by the Elderly
+# Analysis and Prediction of Medical Service Utilization Among Adults Aged 50 and Older
 
-**Authors:** Pedro Kauan Silveira Silva  
-**Advisor:** Bruno Riccelli dos Santos Silva
+**Authors:** Pedro Kauan Silveira Silva, Mikeyas Brito dos Santos, Wesley Barbosa Silva, Bruno Riccelli dos Santos Silva, Wellington Franco, Paulo Cesar Cortez, and Andressa G. Moreira  
+**Affiliation:** Federal University of Ceará (UFC), Brazil
 
-A compact, reproducible project that explores patterns of medical service usage among people aged **50+** using the **National Poll on Healthy Aging (NPHA)** dataset. We compare multiple machine learning classifiers (MLP, Decision Tree, Random Forest, SVM, XGBoost, KNN, Logistic Regression) using stratified cross-validation, GridSearch hyperparameter tuning and statistical validation (Wilcoxon test).
+## Executive summary
 
----
+This project presents a reproducible comparison of supervised machine-learning classifiers for a binary formulation of healthcare service utilization among adults aged 50 years and older. The study uses 714 observations from the National Poll on Healthy Aging (NPHA), preserves the observed class distribution, and evaluates baseline, fold-specific feature-selection, cost-sensitive, ensemble, and threshold-selection scenarios. Nested stratified cross-validation and out-of-fold predictions provide the basis for performance estimates.
 
-## 🚀 Quick Highlights
-- Predicts annual doctor-visit frequency (categorized: `0–1`, `2+` visits)  
-- Uses **stratified cross-validation** + **GridSearch**  
-- Evaluated using **Accuracy** and **macro F1-score**  
-- **Wilcoxon Test** applied for statistical validation  
-- Full exploratory and ML analysis inside: `AUSMI.ipynb`  
-- Dataset included: `NPHA-doctor-visits.csv`
+The final results indicate limited discrimination between the two utilization classes. Cost-sensitive weighting and internal threshold selection recover part of the minority class in selected configurations, but with trade-offs. These findings are methodological and preliminary; they do not support clinical decision-making, diagnosis, triage, or deployment.
 
----
+## Research objective
 
+The objective is to assess how different supervised learning paradigms behave when predicting a binary utilization outcome from the demographic and health variables available in the NPHA dataset. The protocol emphasizes fair comparison, preservation of prevalence, leakage-resistant preprocessing, fold-specific feature selection, and class-sensitive evaluation rather than accuracy alone.
 
-## 🔬 Project Summary
-Population aging increases chronic illnesses and healthcare demand. This project investigates which demographic and health factors influence the number of annual doctor visits among adults aged 50+. The goal is to provide interpretable insights and a reproducible ML benchmark for academic and policy-related decisions.
+## Contributions
 
-## 🧾 Dataset
-**Source:** National Poll on Healthy Aging (NPHA)
+- Comparative evaluation of linear, probabilistic, instance-based, tree-based, neural, margin-based, and graph-based classifiers under one protocol.
+- Nested stratified cross-validation with explicit inner-loop model selection and held-out outer-fold evaluation.
+- Evaluation without SMOTE or other synthetic resampling, preserving the observed epidemiological class distribution.
+- Fold-specific Mean Decrease Impurity (MDI) feature selection and cost-sensitive learning as separate scenarios.
+- Internal ensemble-member, calibration, and threshold selection using training-side out-of-fold information.
+- Exploratory paired Wilcoxon signed-rank comparisons with Holm correction.
 
-**Samples:** 714
+## Dataset and target
 
-**Features:** 14 demographic and health-related variables
+The project uses the National Poll on Healthy Aging (NPHA) dataset.
 
-**Target categories:**
-- 0–1 visits
-- 2+ visits (Merged the original 2-3 and 4+ classes for a more balanced binary task)
+- **Sample:** 714 adults aged 50 years and older.
+- **Predictors:** 14 sociodemographic and health-related variables.
+- **Target:** binary recoding of the original number-of-doctors-visited variable:
+  - `0`: zero or one distinct doctor consulted — 131 observations;
+  - `1`: two or more distinct doctors consulted — 583 observations.
 
-## ⚙️ Methodology Overview
-- **Data Cleaning & Feature Selection:** Removal of redundant or inconsistent features, plus dropping the bottom 12 low-importance features using MDI (Mean Decrease Impurity) consensus.
-- **Encoding:** One-Hot Encoding + ordinal labels
-- **Scaling:** MinMaxScaler inside the CV pipeline
-- **Splitting:** Stratified train/test split
-- **Models Tested:**
-  - K-Nearest Neighbors (KNN)
-  - Decision Tree
-  - Random Forest
-  - Support Vector Machine (SVM)
-  - Multi-Layer Perceptron (MLP)
-  - Logistic Regression
-  - XGBoost
-- **Validation:** 10-fold Stratified Cross-Validation
-- **Hyperparameter Tuning:** GridSearchCV
-- **Metrics:** Accuracy, Precision, Recall, F1-score
-- **Statistical Test:** Wilcoxon signed-rank test
+Class `1` is the positive and majority class (81.65%); class `0` represents 18.35%. The number of distinct doctors consulted is treated as an operational utilization proxy, not as a validated clinical definition of high utilization.
 
-## 🤖 Machine Learning Models Evaluated
+## Evaluation protocol
 
-| Model | Hyperparameter Tuning Strategy | Evaluation Metric |
-|-------|--------------------------------|-------------------|
-| **MLP Classifier** | hidden_layer_sizes, activation, solver | Accuracy, F1-score |
-| **Logistic Regression** | C, penalty, solver | Accuracy, F1-score |
-| **Random Forest** | n_estimators, max_depth | Accuracy, F1-score |
-| **Decision Tree** | max_depth, criterion | Accuracy, F1-score |
-| **XGBoost** | n_estimators, max_depth, learning_rate | Accuracy, F1-score |
-| **SVM** | C, kernel, gamma | Accuracy, F1-score |
-| **KNN** | n_neighbors, metric | Accuracy, F1-score |
+All preprocessing is contained in a `ColumnTransformer` pipeline and fitted separately within each training partition:
 
-The models were evaluated using 10-fold stratified cross-validation and results showed that **XGBoost and Random Forest** achieved the highest accuracy, while **KNN** obtained the best F1-score.
+- Numerical variables: training-partition median imputation followed by `StandardScaler`.
+- Categorical variables: training-partition most-frequent imputation followed by one-hot encoding with unknown-category handling.
+- Validation and outer-test data: transformed with fitted training components, without refitting.
 
-## 📊 Results
-**Mean ± Standard Deviation across 10-fold CV**
+The evaluation uses nested `StratifiedKFold` with 10 shuffled outer folds and 5 shuffled inner folds, using seed `42`. Hyperparameter combinations are generated with `ParameterGrid` and evaluated explicitly by inner-fold macro F1. Each selected configuration is then fitted on the outer training partition and evaluated once on its held-out outer test partition. Out-of-fold predictions aggregate one prediction for every observation.
 
-| Model | Accuracy | F1 Score |
-|-------|----------|----------|
-| XGBoost | 0.8166 ± 0.0447 | 0.7348 ± 0.0622 |
-| Random Forest | 0.8166 ± 0.0447 | 0.7348 ± 0.0622 |
-| MLP Classifier | 0.8110 ± 0.0440 | 0.7320 ± 0.0615 |
-| Logistic Regression | 0.8110 ± 0.0429 | 0.7320 ± 0.0615 |
-| KNN | 0.8095 ± 0.0511 | 0.7398 ± 0.0603 |
-| Decision Tree | 0.8067 ± 0.0347 | 0.7322 ± 0.0531 |
-| SVM | 0.7801 ± 0.0387 | 0.7291 ± 0.0506 |
+In the MDI-80% scenario, an auxiliary 100-tree random forest ranks transformed features by Mean Decrease Impurity within each training fold. The smallest subset reaching at least 80% cumulative importance is retained, and selection is recomputed independently by fold. No global feature subset is defined.
 
-- **Cross-Validation:** Each model was trained and evaluated on 10 folds, ensuring robust performance.
-- **Statistical Test:** The Wilcoxon test was applied to compare distributions and select the best models with statistical confidence.
+No synthetic resampling is applied. Cost-sensitive weighting is evaluated for Decision Tree, Random Forest, Logistic Regression, SVC, and XGBoost using class information from each training partition. SVC scores are sigmoid-calibrated with `CalibratedClassifierCV` using internal five-fold calibration. Ensemble members, equal one-third weights, and decision thresholds are selected without access to the corresponding outer test fold. Candidate thresholds range from 0.10 to 0.90 in increments of 0.05; macro F1 is the primary criterion, with balanced accuracy and MCC used to resolve ties.
 
-## 🏆 Main Findings
-- Merging the overlapping targets into a binary problem ("0-1 visits" vs "2+ visits") dramatically improved predictability.
-- Removing the bottom 12 noise features using MDI (Mean Decrease Impurity) helped clarify decision boundaries.
-- **XGBoost** and **Random Forest** achieved the highest accuracy (~81.66%).
-- **KNN** achieved the best F1-score (~73.98%).
+## Models and scenarios
 
-## 🧰 Requirements
-Create a `requirements.txt` file:
+The study evaluates 11 supervised classifiers and a majority-class dummy baseline:
 
-```txt
-pandas
-numpy
-scikit-learn
-xgboost
-imbalanced-learn
-matplotlib
-seaborn
-jupyterlab
-scipy
-````
+1. K-Nearest Neighbors (KNN)
+2. Decision Tree (DT)
+3. Random Forest (RF)
+4. Support Vector Classifier (SVC)
+5. Multi-Layer Perceptron (MLP)
+6. Logistic Regression (LR)
+7. XGBoost (XGB)
+8. Gaussian Naive Bayes (GNB)
+9. Nearest Centroid (NC)
+10. Optimum-Path Forest (OPF)
+11. AdaBoost (AdaB)
+12. Majority-class Dummy
 
-## 📈 Visual Outputs
+Scenarios are:
 
-AUSMI.ipynb includes:
-- Heatmaps
-- Feature distribution plots
-- Confusion matrices
-- Wilcoxon test matrices
+- **BL:** all-feature baseline;
+- **MDI:** fold-specific MDI-80% feature selection;
+- **COST:** cost-sensitive weighting for DT, LR, RF, SVC, and XGB.
 
-## 🔭 Future Work
-- Increase dataset size
-- Apply SMOTE or cost-sensitive learning
-- Explore stacking and deep learning models
-- Add SHAP/LIME explainability
-- Validate models on external datasets
+Ensemble analyses include majority voting, probability averaging, a fixed threshold of 0.50, and the internally selected threshold of 0.80.
 
-## 📚 References
-- United Nations — World Population Prospects 2019
-- National Poll on Healthy Aging (NPHA)
-- UCI Machine Learning Repository
-- Kaggle NPHA projects
+## Final results
+
+Values are mean ± standard deviation across the 10 outer folds. `Rec0` and `Rec1` denote recall for classes 0 and 1. Dashes indicate metrics not included in this concise summary.
+
+| Configuration | Scenario | Rec0 | Rec1 | F1 macro | BA | MCC | AUROC | PR-AUC |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| MLP | MDI | — | — | **0.498 ± 0.044** | — | — | — | — |
+| LR | COST | **0.596 ± 0.088** | — | — | **0.553 ± 0.062** | **0.082 ± 0.096** | **0.574 ± 0.075** | **0.868 ± 0.037** |
+| Ensemble, selected threshold 0.80 | THR | **0.129 ± 0.108** | **0.879 ± 0.114** | **0.493 ± 0.058** | — | — | — | — |
+
+Across scenarios, several classifiers largely reproduce the majority-class prediction profile. AUROC values remain near 0.5 for most models, while PR-AUC remains close to the positive-class prevalence, supporting the conclusion of limited discriminative capacity.
+
+OPF does not provide a continuous score in the implemented pipeline. Because AUROC and PR-AUC require a continuous class-1 score rather than discrete predictions, both metrics are unavailable for OPF. Nearest Centroid uses its distance-based decision function for discrimination metrics.
+
+## Statistical evidence
+
+The exploratory statistical analysis compares each classifier in the MDI-80% scenario with the majority-class dummy using paired outer-fold macro F1 values. Eleven contrasts are corrected with Holm’s step-down procedure. No contrast has corrected `p < 0.05`. Since cross-validation folds from one dataset are dependent and only 10 outer folds are available, these results are descriptive rather than conclusive evidence of model superiority.
+
+## Reproducibility
+
+The public final run is identified by seed `42` and stored in `revisao_experimental/20260914T204617Z/`. The directory includes the manifest, fold assignments, per-fold metrics, out-of-fold predictions, MDI outputs, ensemble outputs, threshold results, statistical results, and ROC/PR artifacts. Key files include:
+
+- `manifest.json`
+- `folds.csv`
+- `metrics_per_fold.csv`
+- `mdi_frequency.csv`
+- `oof_*.csv`
+- `ensemble_members.json`
+- `ensemble_profiles.json`
+- `thresholds.json`
+- `wilcoxon_holm.json`
+
+From the project root, launch the analysis notebook with:
+
+```bash
+jupyter notebook src/AUSMI.ipynb
+```
+
+The input data are available at `src/NPHA-doctor-visits.csv`, and project dependencies are documented in `requirements.txt`.
+
+## Public project structure
+
+```text
+analyze-medical-services/
+├── README.md
+├── requirements.txt
+├── src/
+│   ├── AUSMI.ipynb
+│   ├── NPHA-doctor-visits.csv
+│   └── opfython.log*
+├── revisao_experimental/
+│   └── 20260914T204617Z/
+└── artifacts/
+    └── AUSMI_corrigido/20260912_214440/
+```
+
+The final results in this document refer to `revisao_experimental/20260914T204617Z/`. The older `artifacts/AUSMI_corrigido/20260912_214440/` directory remains available for repository traceability but is not used as evidence for the final results.
+
+## Limitations
+
+This is a cross-sectional analysis of one dataset with an imbalanced target. The recorded variables and operational outcome form a difficult prediction task, and model behavior and feature importance vary across folds. External validation was not available for a compatible dataset, so performance cannot be assumed to transfer to other populations, settings, or data-collection procedures.
+
+## Citation
+
+Final bibliographic information is pending. Use the following placeholder until publication details are confirmed:
+
+> Silva, P. K. S., et al. *Analysis and Prediction of Medical Service Utilization Among Adults Aged 50 and Older: A Machine Learning Approach*. [Publication details to be added].
